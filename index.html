@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Restaurantes</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e12;
+    --surface: #16161d;
+    --surface2: #1e1e28;
+    --border: #2a2a38;
+    --accent: #c084fc;
+    --accent2: #f472b6;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --gray: #52525b;
+    --text: #e4e4f0;
+    --muted: #71717a;
+    --radius: 12px;
+    --sidebar-w: 220px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* ── NOISE ── */
+  .noise {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.4;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 32px 0 24px;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 10;
+  }
+  .sidebar-logo {
+    padding: 0 20px 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .sidebar-logo .tag {
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  .sidebar-logo h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .sidebar-logo h2 span { color: var(--accent); }
+
+  .sidebar-nav { flex: 1; padding: 0 12px; }
+  .nav-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 8px;
+    margin-bottom: 8px;
+  }
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 11px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+    margin-bottom: 3px;
+  }
+  .nav-btn:hover { background: var(--surface2); color: var(--text); }
+  .nav-btn.active {
+    background: var(--surface2);
+    border-color: var(--border);
+    color: #fff;
+  }
+  .nav-btn.active .nav-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .nav-accent-nocturna { color: var(--accent); }
+  .nav-accent-finde { color: #34d399; }
+  .nav-accent-fiesta { color: #fb923c; }
+  .nav-btn.active.nocturna .nav-dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .nav-btn.active.finde .nav-dot { background: #34d399; box-shadow: 0 0 8px #34d399; }
+  .nav-btn.active.fiesta .nav-dot { background: #fb923c; box-shadow: 0 0 8px #fb923c; }
+
+  .sidebar-footer {
+    padding: 16px 20px 0;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; padding: 40px 32px 80px; max-width: 800px; }
+  .screen.active { display: block; }
+
+  /* ── HEADER ── */
+  header { margin-bottom: 40px; border-bottom: 1px solid var(--border); padding-bottom: 28px; }
+  .tag-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 14px;
+  }
+  .tag-header.finde { color: #34d399; border-color: #34d399; }
+  .tag-header.fiesta { color: #fb923c; border-color: #fb923c; }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(26px, 4vw, 44px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: #fff;
+  }
+  h1 span.nocturna { color: var(--accent); }
+  h1 span.finde { color: #34d399; }
+  h1 span.fiesta { color: #fb923c; }
+
+  /* ── INPUTS ── */
+  .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 36px; }
+  @media (max-width: 560px) { .inputs { grid-template-columns: 1fr; } }
+  .input-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .input-block:focus-within { border-color: var(--accent); }
+  .input-block.finde:focus-within { border-color: #34d399; }
+  .input-block.fiesta:focus-within { border-color: #fb923c; }
+  .input-block label { display: block; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .input-block input {
+    width: 100%; background: transparent; border: none; outline: none;
+    font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700;
+    color: var(--accent); caret-color: var(--accent);
+  }
+  .input-block.finde input { color: #34d399; caret-color: #34d399; }
+  .input-block.fiesta input { color: #fb923c; caret-color: #fb923c; }
+  .input-block input::placeholder { color: var(--border); }
+  .input-block .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  /* ── SUMMARY ── */
+  .summary-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 36px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+  .stat-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.yellow { color: var(--yellow); }
+  .stat-value.muted { color: var(--muted); }
+  .stat-value.finde-c { color: #34d399; }
+  .stat-value.fiesta-c { color: #fb923c; }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── RESTAURANT LIST ── */
+  .restaurant-list { margin-bottom: 48px; }
+  .rest-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 20px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.22s;
+    margin-bottom: 4px;
+    animation: fadeIn 0.3s ease both;
+  }
+  .rest-row:hover { background: var(--surface); border-color: var(--border); }
+  .rest-row.blocked { opacity: 0.28; text-decoration: line-through; color: var(--muted); }
+  .rest-row.can-go.nocturna { border-left: 2px solid var(--accent); padding-left: 18px; }
+  .rest-row.can-go.finde { border-left: 2px solid #34d399; padding-left: 18px; }
+  .rest-row.can-go.fiesta { border-left: 2px solid #fb923c; padding-left: 18px; }
+  .rest-row.cant-go { border-left: 2px solid var(--border); padding-left: 18px; }
+  .rest-name { font-size: 14px; font-weight: 500; }
+  .rest-price { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .rest-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; white-space: nowrap; font-weight: 500; }
+  .rest-badge.ok.nocturna { background: rgba(192,132,252,0.12); color: var(--accent); }
+  .rest-badge.ok.finde { background: rgba(52,211,153,0.12); color: #34d399; }
+  .rest-badge.ok.fiesta { background: rgba(251,146,60,0.12); color: #fb923c; }
+  .rest-badge.no { background: rgba(248,113,113,0.1); color: var(--red); }
+  .rest-badge.blocked-badge { background: rgba(82,82,91,0.2); color: var(--gray); }
+  .rest-badge.empty { background: rgba(251,191,36,0.1); color: var(--yellow); }
+
+  /* ── ADD RESTAURANT ── */
+  .add-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+  .add-section h3 { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 16px; }
+  .add-grid { display: grid; grid-template-columns: 1fr 120px 120px auto; gap: 10px; align-items: end; }
+  @media (max-width: 600px) { .add-grid { grid-template-columns: 1fr 1fr; } }
+  .add-field label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; }
+  .add-field input, .add-field select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 12px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .add-field input:focus, .add-field select:focus { border-color: var(--accent); }
+  .add-field select option { background: var(--surface2); }
+  .add-btn {
+    background: var(--accent); color: #0e0e12; border: none; border-radius: 8px;
+    padding: 10px 16px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.2s; white-space: nowrap;
+  }
+  .add-btn:hover { opacity: 0.85; }
+  .add-btn.finde { background: #34d399; }
+  .add-btn.fiesta { background: #fb923c; }
+
+  /* ── HISTORY ── */
+  .history-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; }
+  .history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .history-header h2 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: #fff; }
+  .history-header p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .emoji-hint { background: var(--surface2); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 11px; color: var(--muted); line-height: 1.8; }
+  .emoji-hint strong { color: var(--text); display: block; margin-bottom: 4px; }
+  .emoji-hint .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chip { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: border-color 0.15s; user-select: none; }
+  .chip:hover { border-color: var(--accent); }
+  .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 500px) { .history-grid { grid-template-columns: 1fr; } }
+  .history-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .history-card label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 10px; }
+  .emoji-input-wrap { display: flex; align-items: center; gap: 10px; }
+  .emoji-input { width: 52px; height: 44px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; text-align: center; font-size: 22px; color: var(--text); outline: none; transition: border-color 0.2s; }
+  .emoji-input:focus { border-color: var(--accent); }
+  .cat-display { font-size: 11px; color: var(--accent2); font-style: italic; }
+  .cat-display.none { color: var(--muted); }
+  .clear-btn { display: block; margin: 16px auto 0; background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; padding: 7px 18px; border-radius: 6px; cursor: pointer; letter-spacing: 0.08em; transition: all 0.2s; }
+  .clear-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── DELETE BTN ── */
+  .rest-del { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 2px 6px; border-radius: 4px; transition: color 0.15s; opacity: 0; }
+  .rest-row:hover .rest-del { opacity: 1; }
+  .rest-del:hover { color: var(--red); }
+
+  /* ── MOBILE SIDEBAR TOGGLE ── */
+  .sidebar-toggle {
+    display: none;
+    position: fixed; top: 16px; left: 16px; z-index: 20;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-size: 18px; border-radius: 8px;
+    padding: 6px 10px; cursor: pointer;
+  }
+  @media (max-width: 700px) {
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s; }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; }
+    .sidebar-toggle { display: block; }
+    .screen { padding: 56px 20px 60px; }
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<!-- MOBILE TOGGLE -->
+<button class="sidebar-toggle" onclick="toggleSidebar()" title="Menú">☰</button>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="tag">Medellín · 2026</div>
+    <h2>Calculadora<br>de <span>Restaurantes</span></h2>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Modos</div>
+    <button class="nav-btn nocturna active" onclick="showScreen('nocturna', this)">
+      <span class="nav-dot"></span> 🌙 Semanal Nocturna
+    </button>
+    <button class="nav-btn finde" onclick="showScreen('finde', this)">
+      <span class="nav-dot"></span> ☀️ Fin de Semana
+    </button>
+    <button class="nav-btn fiesta" onclick="showScreen('fiesta', this)">
+      <span class="nav-dot"></span> 🎉 Fiesta
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    Presupuesto en pesos<br>colombianos · precios para 2
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+
+  <!-- ─── SCREEN: SEMANAL NOCTURNA ─── -->
+  <section class="screen active" id="screen-nocturna">
+    <header>
+      <div class="tag-header">🌙 Semanal Nocturna</div>
+      <h1>Salir a <span class="nocturna">comer</span><br>esta semana</h1>
+    </header>
+    <div class="inputs">
+      <div class="input-block">
+        <label>Presupuesto disponible</label>
+        <input type="number" id="budget-nocturna" placeholder="0" min="0" step="1000">
+        <div class="hint">En pesos colombianos</div>
+      </div>
+      <div class="input-block">
+        <label>Número de personas</label>
+        <input type="number" id="persons-nocturna" value="2" min="1" max="20">
+        <div class="hint">El precio base es para 2</div>
+      </div>
+    </div>
+    <div class="summary-bar">
+      <div class="stat"><div class="stat-label">Puedes ir a</div><div class="stat-value green" id="count-ok-nocturna">—</div></div>
+      <div class="stat"><div class="stat-label">Más barato</div><div class="stat-value yellow" id="cheapest-nocturna">—</div></div>
+      <div class="stat"><div class="stat-label">Bloqueados</div><div class="stat-value muted" id="count-blocked-nocturna">—</div></div>
+    </div>
+    <div class="section-title">Restaurantes</div>
+    <div class="restaurant-list" id="list-nocturna"></div>
+    <div class="section-title">Historial</div>
+    <div class="history-section">
+      <div class="history-header">
+        <div><h2>¿Qué comiste estos días?</h2><p>Los de la misma categoría quedan tachados</p></div>
+      </div>
+      <div class="emoji-hint">
+        <strong>Escribe el emoji del restaurante que comiste:</strong>
+        <div class="chips" id="chips-nocturna"></div>
+      </div>
+      <div class="history-grid" id="history-nocturna"></div>
+      <button class="clear-btn" onclick="clearHistory('nocturna')">Limpiar historial</button>
+    </div>
+  </section>
+
+  <!-- ─── SCREEN: FIN DE SEMANA ─── -->
+  <section class="screen" id="screen-finde">
+    <header>
+      <div class="tag-header finde">☀️ Fin de Semana</div>
+      <h1>Salir a <span class="finde">comer</span><br>el finde</h1>
+    </header>
+    <div class="inputs">
+      <div class="input-block finde">
+        <label>Presupuesto disponible</label>
+        <input type="number" id="budget-finde" placeholder="0" min="0" step="1000">
+        <div class="hint">En pesos colombianos</div>
+      </div>
+      <div class="input-block finde">
+        <label>Número de personas</label>
+        <input type="number" id="persons-finde" value="2" min="1" max="20">
+        <div class="hint">El precio base es para 2</div>
+      </div>
+    </div>
+    <div class="summary-bar">
+      <div class="stat"><div class="stat-label">Puedes ir a</div><div class="stat-value finde-c" id="count-ok-finde">—</div></div>
+      <div class="stat"><div class="stat-label">Más barato</div><div class="stat-value yellow" id="cheapest-finde">—</div></div>
+      <div class="stat"><div class="stat-label">Bloqueados</div><div class="stat-value muted" id="count-blocked-finde">—</div></div>
+    </div>
+    <div class="section-title">Restaurantes · Fin de Semana</div>
+    <div class="restaurant-list" id="list-finde"></div>
+    <!-- ADD -->
+    <div class="add-section">
+      <h3>+ Agregar restaurante</h3>
+      <div class="add-grid">
+        <div class="add-field"><label>Nombre + emoji</label><input type="text" id="add-name-finde" placeholder="Ej: La Fonda 🍛"></div>
+        <div class="add-field"><label>Precio (2 personas)</label><input type="number" id="add-price-finde" placeholder="60000" step="1000"></div>
+        <div class="add-field"><label>Categoría</label><input type="text" id="add-cat-finde" placeholder="Ej: bandeja"></div>
+        <div class="add-field"><button class="add-btn finde" onclick="addRestaurant('finde')">Agregar</button></div>
+      </div>
+    </div>
+    <div class="section-title">Historial</div>
+    <div class="history-section">
+      <div class="history-header">
+        <div><h2>¿Qué comiste este finde?</h2><p>Los de la misma categoría quedan tachados</p></div>
+      </div>
+      <div class="emoji-hint">
+        <strong>Escribe el emoji del restaurante que comiste:</strong>
+        <div class="chips" id="chips-finde"></div>
+      </div>
+      <div class="history-grid" id="history-finde"></div>
+      <button class="clear-btn" onclick="clearHistory('finde')">Limpiar historial</button>
+    </div>
+  </section>
+
+  <!-- ─── SCREEN: FIESTA ─── -->
+  <section class="screen" id="screen-fiesta">
+    <header>
+      <div class="tag-header fiesta">🎉 Fiesta</div>
+      <h1>Comer antes<br>de la <span class="fiesta">rumba</span></h1>
+    </header>
+    <div class="inputs">
+      <div class="input-block fiesta">
+        <label>Presupuesto disponible</label>
+        <input type="number" id="budget-fiesta" placeholder="0" min="0" step="1000">
+        <div class="hint">En pesos colombianos</div>
+      </div>
+      <div class="input-block fiesta">
+        <label>Número de personas</label>
+        <input type="number" id="persons-fiesta" value="2" min="1" max="20">
+        <div class="hint">El precio base es para 2</div>
+      </div>
+    </div>
+    <div class="summary-bar">
+      <div class="stat"><div class="stat-label">Puedes ir a</div><div class="stat-value fiesta-c" id="count-ok-fiesta">—</div></div>
+      <div class="stat"><div class="stat-label">Más barato</div><div class="stat-value yellow" id="cheapest-fiesta">—</div></div>
+      <div class="stat"><div class="stat-label">Bloqueados</div><div class="stat-value muted" id="count-blocked-fiesta">—</div></div>
+    </div>
+    <div class="section-title">Restaurantes · Fiesta</div>
+    <div class="restaurant-list" id="list-fiesta"></div>
+    <!-- ADD -->
+    <div class="add-section">
+      <h3>+ Agregar restaurante</h3>
+      <div class="add-grid">
+        <div class="add-field"><label>Nombre + emoji</label><input type="text" id="add-name-fiesta" placeholder="Ej: Cazuela 🍲"></div>
+        <div class="add-field"><label>Precio (2 personas)</label><input type="number" id="add-price-fiesta" placeholder="60000" step="1000"></div>
+        <div class="add-field"><label>Categoría</label><input type="text" id="add-cat-fiesta" placeholder="Ej: cazuela"></div>
+        <div class="add-field"><button class="add-btn fiesta" onclick="addRestaurant('fiesta')">Agregar</button></div>
+      </div>
+    </div>
+    <div class="section-title">Historial</div>
+    <div class="history-section">
+      <div class="history-header">
+        <div><h2>¿Qué comiste antes?</h2><p>Los de la misma categoría quedan tachados</p></div>
+      </div>
+      <div class="emoji-hint">
+        <strong>Escribe el emoji del restaurante que comiste:</strong>
+        <div class="chips" id="chips-fiesta"></div>
+      </div>
+      <div class="history-grid" id="history-fiesta"></div>
+      <button class="clear-btn" onclick="clearHistory('fiesta')">Limpiar historial</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════
+//  DATA
+// ════════════════════════════════════════════
+const DEFAULT_RESTAURANTS = {
+  nocturna: [
+    { name: "Mao 🥐🍟",           price: 70000,  cat: "sandwich"    },
+    { name: "Alexander 🥩",        price: 60000,  cat: "parrilla"    },
+    { name: "Autentico 🥩",        price: 55000,  cat: "parrilla"    },
+    { name: "Hot cheese 🍔",       price: 50000,  cat: "hamburguesa" },
+    { name: "Tomahawk 🍗",         price: 90000,  cat: "pollo"       },
+    { name: "Barrio 🍔",           price: 55000,  cat: "hamburguesa" },
+    { name: "Stella 🐐",           price: 140000, cat: "especial"    },
+    { name: "Mr alitas 🍗",        price: 60000,  cat: "pollo"       },
+    { name: "Mandingas 🍟",        price: 30000,  cat: "papas"       },
+    { name: "Perros de Diego 🌭",  price: 75000,  cat: "perro"       },
+    { name: "Pollo Rappy 🍗",      price: 50000,  cat: "pollo"       },
+    { name: "Pollo Santa Gema 🍗", price: 55000,  cat: "pollo"       },
+    { name: "Animal 🍔",           price: 60000,  cat: "hamburguesa" },
+    { name: "Piloncito 🍔",        price: 60000,  cat: "hamburguesa" },
+    { name: "Natipapas 🍟",        price: 70000,  cat: "papas"       },
+    { name: "Burrazo 🌯",          price: 50000,  cat: "burrito"     },
+    { name: "Mexicano la 70 🌯",   price: 70000,  cat: "burrito"     },
+    { name: "Tachingon 🌯",        price: 100000, cat: "burrito"     },
+    { name: "Harry's 🍕",          price: 50000,  cat: "pizza"       },
+  ],
+  finde: [],
+  fiesta: []
+};
+
+const EMOJI_MAP = {
+  "🥐": "sandwich", "🍟": "papas",   "🥩": "parrilla",
+  "🍔": "hamburguesa", "🍗": "pollo", "🐐": "especial",
+  "🌭": "perro",    "🌯": "burrito", "🍕": "pizza",
+  "🍛": "curry",    "🍲": "cazuela", "🥗": "ensalada",
+  "🌮": "tacos",    "🍣": "sushi",   "🍜": "sopa"
+};
+
+const DAYS = ["Ayer · Almuerzo", "Ayer · Cena", "Hoy · Almuerzo", "Hoy · Cena"];
+
+// ════════════════════════════════════════════
+//  STATE  (loaded from localStorage)
+// ════════════════════════════════════════════
+function loadState() {
+  return {
+    restaurants: JSON.parse(localStorage.getItem('rest-data') || 'null') || DEFAULT_RESTAURANTS,
+    history: JSON.parse(localStorage.getItem('rest-history-v2') || '{"nocturna":["","","",""],"finde":["","","",""],"fiesta":["","","",""]}')
+  };
+}
+
+let state = loadState();
+
+function saveState() {
+  localStorage.setItem('rest-data', JSON.stringify(state.restaurants));
+  localStorage.setItem('rest-history-v2', JSON.stringify(state.history));
+}
+
+// ════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════
+function showScreen(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  btn.classList.add('active');
+  closeSidebar();
+  renderAll(id);
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+// ════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════
+function fmt(n) { return '$' + Number(n).toLocaleString('es-CO'); }
+function calcPrice(base, persons) { return Math.round(base / 2 * persons); }
+
+function getBlockedCats(mode) {
+  const cats = new Set();
+  (state.history[mode] || []).forEach(emoji => {
+    const cat = EMOJI_MAP[emoji.trim()];
+    if (cat) cats.add(cat);
+  });
+  return cats;
+}
+
+// Extract emojis from a restaurant's name for the chip list
+function getEmojisFromList(mode) {
+  const emojis = new Set();
+  (state.restaurants[mode] || []).forEach(r => {
+    [...r.name].forEach(ch => {
+      const cp = ch.codePointAt(0);
+      if (cp > 127 && EMOJI_MAP[ch]) emojis.add(ch);
+    });
+  });
+  return [...emojis];
+}
+
+// ════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════
+function renderAll(mode) {
+  renderList(mode);
+  renderHistory(mode);
+  renderChips(mode);
+}
+
+function renderList(mode) {
+  const budget = parseFloat(document.getElementById('budget-' + mode).value) || 0;
+  const persons = parseInt(document.getElementById('persons-' + mode).value) || 2;
+  const blocked = getBlockedCats(mode);
+  const listEl = document.getElementById('list-' + mode);
+  listEl.innerHTML = '';
+
+  let countOk = 0, cheapest = Infinity;
+  const restaurants = state.restaurants[mode] || [];
+
+  restaurants.forEach((r, i) => {
+    const price = calcPrice(r.price, persons);
+    const isBlocked = blocked.has(r.cat);
+    const canGo = !isBlocked && budget > 0 && budget >= price;
+
+    if (canGo) { countOk++; if (price < cheapest) cheapest = price; }
+
+    const row = document.createElement('div');
+    row.className = 'rest-row' + (isBlocked ? ' blocked' : canGo ? ` can-go ${mode}` : ' cant-go');
+    row.style.setProperty('--i', i);
+
+    let badge = '';
+    if (isBlocked) {
+      badge = `<span class="rest-badge blocked-badge">⛔ ya comiste</span>`;
+    } else if (budget === 0) {
+      badge = `<span class="rest-badge empty">— ingresa presupuesto</span>`;
+    } else if (canGo) {
+      badge = `<span class="rest-badge ok ${mode}">✓ puedes ir</span>`;
+    } else {
+      badge = `<span class="rest-badge no">faltan ${fmt(price - budget)}</span>`;
+    }
+
+    // delete button only for finde/fiesta
+    const delBtn = mode !== 'nocturna'
+      ? `<button class="rest-del" onclick="deleteRestaurant('${mode}', ${i})" title="Eliminar">✕</button>`
+      : '';
+
+    row.innerHTML = `
+      <span class="rest-name">${r.name}</span>
+      <span class="rest-price">${fmt(price)}</span>
+      <div style="display:flex;align-items:center;gap:8px">${badge}${delBtn}</div>
+    `;
+    listEl.appendChild(row);
+  });
+
+  if (restaurants.length === 0) {
+    listEl.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:20px 0;text-align:center">
+      Aún no hay restaurantes · agrégalos abajo ↓</div>`;
+  }
+
+  document.getElementById('count-ok-' + mode).textContent = budget > 0 ? `${countOk} lugares` : '—';
+  document.getElementById('cheapest-' + mode).textContent = budget > 0 && countOk > 0 ? fmt(cheapest) : '—';
+  const blockedCount = restaurants.filter(r => blocked.has(r.cat)).length;
+  document.getElementById('count-blocked-' + mode).textContent = blocked.size > 0 ? `${blockedCount} lugares` : '—';
+}
+
+function renderHistory(mode) {
+  const grid = document.getElementById('history-' + mode);
+  grid.innerHTML = '';
+  DAYS.forEach((day, i) => {
+    const emoji = (state.history[mode] || [])[i] || '';
+    const cat = EMOJI_MAP[emoji.trim()] || '';
+    const card = document.createElement('div');
+    card.className = 'history-card';
+    card.innerHTML = `
+      <label>${day}</label>
+      <div class="emoji-input-wrap">
+        <input class="emoji-input" maxlength="2" placeholder="—" value="${emoji}" data-idx="${i}" data-mode="${mode}" />
+        <span class="cat-display ${cat ? '' : 'none'}">${cat || 'sin categoría'}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  grid.querySelectorAll('.emoji-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      const m = e.target.dataset.mode;
+      state.history[m][idx] = e.target.value.trim();
+      saveState();
+      renderAll(m);
+    });
+  });
+}
+
+function renderChips(mode) {
+  const container = document.getElementById('chips-' + mode);
+  container.innerHTML = '';
+  // Build emoji set from ALL known emojis + restaurant list
+  const known = Object.entries(EMOJI_MAP);
+  const seen = new Set();
+  known.forEach(([emoji, cat]) => {
+    if (seen.has(emoji)) return;
+    seen.add(emoji);
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = `${emoji} ${cat}`;
+    chip.title = `Click para copiar ${emoji}`;
+    chip.addEventListener('click', () => {
+      navigator.clipboard.writeText(emoji).catch(() => {});
+      chip.textContent = '✓ copiado';
+      setTimeout(() => { chip.textContent = `${emoji} ${cat}`; }, 1000);
+    });
+    container.appendChild(chip);
+  });
+}
+
+// ════════════════════════════════════════════
+//  ADD / DELETE RESTAURANTS
+// ════════════════════════════════════════════
+function addRestaurant(mode) {
+  const name = document.getElementById('add-name-' + mode).value.trim();
+  const price = parseInt(document.getElementById('add-price-' + mode).value) || 0;
+  const cat = document.getElementById('add-cat-' + mode).value.trim().toLowerCase();
+  if (!name || !price || !cat) {
+    alert('Completa todos los campos: nombre, precio y categoría');
+    return;
+  }
+  state.restaurants[mode].push({ name, price, cat });
+  saveState();
+  document.getElementById('add-name-' + mode).value = '';
+  document.getElementById('add-price-' + mode).value = '';
+  document.getElementById('add-cat-' + mode).value = '';
+  renderAll(mode);
+}
+
+function deleteRestaurant(mode, idx) {
+  state.restaurants[mode].splice(idx, 1);
+  saveState();
+  renderAll(mode);
+}
+
+// ════════════════════════════════════════════
+//  HISTORY CLEAR
+// ════════════════════════════════════════════
+function clearHistory(mode) {
+  state.history[mode] = ['', '', '', ''];
+  saveState();
+  renderAll(mode);
+}
+
+// ════════════════════════════════════════════
+//  INPUT LISTENERS
+// ════════════════════════════════════════════
+['nocturna', 'finde', 'fiesta'].forEach(mode => {
+  ['budget', 'persons'].forEach(field => {
+    document.getElementById(`${field}-${mode}`).addEventListener('input', () => renderList(mode));
+  });
+});
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+renderAll('nocturna');
+</script>
+</body>
+</html>
