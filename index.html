@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Restaurantes</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e12; --surface: #16161d; --surface2: #1e1e28;
+    --border: #2a2a38; --accent: #c084fc; --accent2: #f472b6;
+    --green: #4ade80; --red: #f87171; --yellow: #fbbf24;
+    --blue: #60a5fa; --orange: #fb923c;
+    --gray: #52525b; --text: #e4e4f0; --muted: #71717a;
+    --radius: 12px; --sidebar-l: 220px; --sidebar-r: 52px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; display:flex; }
+
+  .noise {
+    position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.4;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  /* ══ LEFT SIDEBAR ══ */
+  .sidebar-left {
+    width:var(--sidebar-l); min-height:100vh; background:var(--surface);
+    border-right:1px solid var(--border); display:flex; flex-direction:column;
+    padding:32px 0 24px; position:fixed; top:0; left:0; bottom:0; z-index:10; overflow-y:auto;
+  }
+  .sidebar-logo { padding:0 20px 24px; border-bottom:1px solid var(--border); margin-bottom:20px; flex-shrink:0; }
+  .sidebar-logo .tag {
+    font-size:9px; letter-spacing:0.18em; text-transform:uppercase; color:var(--accent);
+    border:1px solid var(--accent); padding:2px 8px; border-radius:4px; display:inline-block; margin-bottom:10px;
+  }
+  .sidebar-logo h2 { font-family:'Syne',sans-serif; font-size:15px; font-weight:800; color:#fff; line-height:1.2; }
+  .sidebar-logo h2 span { color:var(--accent); }
+  .sidebar-nav { flex:1; padding:0 12px; }
+  .nav-group-label {
+    font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted);
+    padding:0 8px; margin-bottom:6px; margin-top:16px; display:block;
+  }
+  .nav-group-label:first-child { margin-top:0; }
+  .nav-btn {
+    display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px;
+    border-radius:8px; border:1px solid transparent; background:transparent;
+    color:var(--muted); font-family:'DM Mono',monospace; font-size:12px;
+    cursor:pointer; text-align:left; transition:all 0.2s; margin-bottom:2px;
+  }
+  .nav-btn:hover { background:var(--surface2); color:var(--text); }
+  .nav-btn.active { background:var(--surface2); border-color:var(--border); color:#fff; }
+  .nav-dot { width:7px; height:7px; border-radius:50%; background:var(--border); flex-shrink:0; transition:all 0.2s; }
+  .nav-btn.active.nocturna .nav-dot { background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  .nav-btn.active.finde    .nav-dot { background:#34d399; box-shadow:0 0 8px #34d399; }
+  .nav-btn.active.fiesta   .nav-dot { background:var(--orange); box-shadow:0 0 8px var(--orange); }
+  .sidebar-footer { padding:16px 20px 0; border-top:1px solid var(--border); font-size:10px; color:var(--muted); line-height:1.6; flex-shrink:0; }
+
+  /* ══ RIGHT SIDEBAR ══ */
+  .sidebar-right {
+    width:var(--sidebar-r); min-height:100vh; background:var(--surface);
+    border-left:1px solid var(--border); display:flex; flex-direction:column;
+    align-items:center; padding:20px 0; position:fixed; top:0; right:0; bottom:0; z-index:10; gap:2px;
+  }
+  .right-label {
+    font-size:8px; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted);
+    writing-mode:vertical-rl; transform:rotate(180deg); margin-bottom:14px; margin-top:2px;
+  }
+  .right-btn {
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    width:44px; padding:11px 4px; border-radius:10px; border:1px solid transparent;
+    background:transparent; color:var(--muted); font-family:'DM Mono',monospace;
+    font-size:8px; cursor:pointer; text-align:center; transition:all 0.2s; letter-spacing:0.04em; line-height:1.2;
+  }
+  .right-btn:hover { background:var(--surface2); color:var(--text); }
+  .right-btn.active { background:var(--surface2); border-color:var(--border); color:#fff; }
+  .right-btn .r-icon { font-size:17px; line-height:1; }
+  .right-btn.active.horarios .r-icon { filter:drop-shadow(0 0 5px var(--blue)); }
+  .right-btn.active.promos   .r-icon { filter:drop-shadow(0 0 5px var(--yellow)); }
+  .right-btn.active.puntos   .r-icon { filter:drop-shadow(0 0 5px #f472b6); }
+  .right-divider { width:28px; height:1px; background:var(--border); margin:6px 0; }
+
+  /* ══ MAIN ══ */
+  .main { margin-left:var(--sidebar-l); margin-right:var(--sidebar-r); flex:1; min-height:100vh; position:relative; z-index:1; }
+
+  /* ── SCREENS ── */
+  .screen { display:none; padding:40px 32px 80px; max-width:800px; }
+  .screen.active { display:block; }
+
+  /* ── HEADER ── */
+  header { margin-bottom:40px; border-bottom:1px solid var(--border); padding-bottom:28px; }
+  .tag-header {
+    display:inline-flex; align-items:center; gap:8px; font-size:10px; letter-spacing:0.2em;
+    text-transform:uppercase; color:var(--accent); border:1px solid var(--accent);
+    padding:3px 10px; border-radius:4px; margin-bottom:14px;
+  }
+  .tag-header.finde    { color:#34d399; border-color:#34d399; }
+  .tag-header.fiesta   { color:var(--orange); border-color:var(--orange); }
+  .tag-header.horarios { color:var(--blue); border-color:var(--blue); }
+  .tag-header.promos   { color:var(--yellow); border-color:var(--yellow); }
+  .tag-header.puntos   { color:#f472b6; border-color:#f472b6; }
+  h1 { font-family:'Syne',sans-serif; font-size:clamp(24px,4vw,44px); font-weight:800; line-height:1.05; letter-spacing:-0.03em; color:#fff; }
+  h1 span.nocturna { color:var(--accent); }
+  h1 span.finde    { color:#34d399; }
+  h1 span.fiesta   { color:var(--orange); }
+  h1 span.horarios { color:var(--blue); }
+  h1 span.promos   { color:var(--yellow); }
+  h1 span.puntos   { color:#f472b6; }
+
+  /* ── INPUTS ── */
+  .inputs { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:36px; }
+  .input-block { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; transition:border-color 0.2s; }
+  .input-block:focus-within         { border-color:var(--accent); }
+  .input-block.finde:focus-within   { border-color:#34d399; }
+  .input-block.fiesta:focus-within  { border-color:var(--orange); }
+  .input-block label { display:block; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+  .input-block input { width:100%; background:transparent; border:none; outline:none; font-family:'Syne',sans-serif; font-size:26px; font-weight:700; color:var(--accent); caret-color:var(--accent); }
+  .input-block.finde  input { color:#34d399; caret-color:#34d399; }
+  .input-block.fiesta input { color:var(--orange); caret-color:var(--orange); }
+  .input-block input::placeholder { color:var(--border); }
+  .input-block .hint { font-size:11px; color:var(--muted); margin-top:6px; }
+
+  /* ── SUMMARY ── */
+  .summary-bar { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:36px; }
+  .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; }
+  .stat-label { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .stat-value { font-family:'Syne',sans-serif; font-size:20px; font-weight:700; }
+  .stat-value.green    { color:var(--green); }
+  .stat-value.yellow   { color:var(--yellow); }
+  .stat-value.muted    { color:var(--muted); }
+  .stat-value.finde-c  { color:#34d399; }
+  .stat-value.fiesta-c { color:var(--orange); }
+
+  /* ── SECTION TITLE ── */
+  .section-title { font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  /* ── RESTAURANT LIST ── */
+  .restaurant-list { margin-bottom:48px; }
+  .rest-row {
+    display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:12px;
+    padding:13px 20px; border-radius:8px; border:1px solid transparent;
+    transition:all 0.22s; margin-bottom:4px; animation:fadeIn 0.3s ease both;
+  }
+  .rest-row:hover { background:var(--surface); border-color:var(--border); }
+  .rest-row.blocked { opacity:0.28; text-decoration:line-through; color:var(--muted); }
+  .rest-row.can-go.nocturna { border-left:2px solid var(--accent); padding-left:18px; }
+  .rest-row.can-go.finde    { border-left:2px solid #34d399; padding-left:18px; }
+  .rest-row.can-go.fiesta   { border-left:2px solid var(--orange); padding-left:18px; }
+  .rest-row.cant-go { border-left:2px solid var(--border); padding-left:18px; }
+  .rest-name  { font-size:14px; font-weight:500; }
+  .rest-price { font-family:'DM Mono',monospace; font-size:13px; color:var(--muted); white-space:nowrap; }
+  .rest-badge { font-size:11px; padding:3px 10px; border-radius:20px; white-space:nowrap; font-weight:500; }
+  .rest-badge.ok.nocturna  { background:rgba(192,132,252,0.12); color:var(--accent); }
+  .rest-badge.ok.finde     { background:rgba(52,211,153,0.12);  color:#34d399; }
+  .rest-badge.ok.fiesta    { background:rgba(251,146,60,0.12);  color:var(--orange); }
+  .rest-badge.no           { background:rgba(248,113,113,0.1);  color:var(--red); }
+  .rest-badge.blocked-badge{ background:rgba(82,82,91,0.2);     color:var(--gray); }
+  .rest-badge.empty        { background:rgba(251,191,36,0.1);   color:var(--yellow); }
+  .rest-del { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:2px 6px; border-radius:4px; transition:color 0.15s; opacity:0; }
+  .rest-row:hover .rest-del { opacity:1; }
+  .rest-del:hover { color:var(--red); }
+
+  /* ── ADD SECTION ── */
+  .add-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:32px; }
+  .add-section h3 { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:#fff; margin-bottom:16px; }
+  .add-grid { display:grid; grid-template-columns:1fr 120px 120px auto; gap:10px; align-items:end; }
+  .add-field label  { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
+  .add-field input, .add-field textarea, .add-field select {
+    width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+    padding:9px 12px; color:var(--text); font-family:'DM Mono',monospace; font-size:12px; outline:none;
+    transition:border-color 0.2s; resize:none;
+  }
+  .add-field input:focus, .add-field textarea:focus, .add-field select:focus { border-color:var(--accent); }
+  .add-field select option { background:var(--surface2); }
+  .add-btn { background:var(--accent); color:#0e0e12; border:none; border-radius:8px; padding:10px 16px; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer; transition:opacity 0.2s; white-space:nowrap; width:100%; }
+  .add-btn:hover { opacity:0.85; }
+  .add-btn.finde  { background:#34d399; }
+  .add-btn.fiesta { background:var(--orange); }
+  .add-btn.blue   { background:var(--blue); }
+  .add-btn.yellow { background:var(--yellow); }
+  .add-btn.pink   { background:#f472b6; }
+
+  /* ── HISTORY ── */
+  .history-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:28px; }
+  .history-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .history-header h2 { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:#fff; }
+  .history-header p  { font-size:11px; color:var(--muted); margin-top:2px; }
+  .emoji-hint { background:var(--surface2); border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:11px; color:var(--muted); line-height:1.8; }
+  .emoji-hint strong { color:var(--text); display:block; margin-bottom:4px; }
+  .emoji-hint .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .chip { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; transition:border-color 0.15s; user-select:none; }
+  .chip:hover { border-color:var(--accent); }
+  .history-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .history-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:16px; }
+  .history-card label { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:10px; }
+  .emoji-input-wrap { display:flex; align-items:center; gap:10px; }
+  .emoji-input { width:52px; height:44px; background:var(--surface); border:1px solid var(--border); border-radius:8px; text-align:center; font-size:22px; color:var(--text); outline:none; transition:border-color 0.2s; }
+  .emoji-input:focus { border-color:var(--accent); }
+  .cat-display { font-size:11px; color:var(--accent2); font-style:italic; }
+  .cat-display.none { color:var(--muted); }
+  .clear-btn { display:block; margin:16px auto 0; background:transparent; border:1px solid var(--border); color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; padding:7px 18px; border-radius:6px; cursor:pointer; letter-spacing:0.08em; transition:all 0.2s; }
+  .clear-btn:hover { border-color:var(--red); color:var(--red); }
+
+  /* ── DISCLAIMER ── */
+  .disclaimer { margin-top:40px; padding:16px 20px; border-top:1px solid var(--border); display:flex; align-items:flex-start; gap:10px; font-size:11px; color:var(--muted); line-height:1.6; }
+  .disclaimer-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
+
+  /* ══ HORARIOS ══ */
+  .horarios-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px; }
+  .horario-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; transition:border-color 0.2s; animation:fadeIn 0.3s ease both; }
+  .horario-card:hover { border-color:var(--blue); }
+  .horario-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .horario-name { font-size:13px; font-weight:500; color:var(--text); }
+  .del-small { background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:2px 5px; border-radius:4px; transition:color 0.15s; opacity:0; }
+  .horario-card:hover .del-small, .promo-card:hover .del-small, .puntos-card:hover .del-small { opacity:1; }
+  .del-small:hover { color:var(--red); }
+  .time-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .time-item label { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:3px; }
+  .time-item span { font-size:12px; color:var(--text); }
+  .open-badge { display:inline-flex; align-items:center; gap:5px; font-size:10px; padding:3px 10px; border-radius:20px; }
+  .open-badge.open    { background:rgba(74,222,128,0.1);  color:var(--green); }
+  .open-badge.closed  { background:rgba(248,113,113,0.1); color:var(--red); }
+  .open-badge.unknown { background:rgba(82,82,91,0.2);    color:var(--muted); }
+  .ah-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:10px; align-items:end; margin-bottom:14px; }
+  .ah-field label { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
+  .ah-field input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 12px; color:var(--text); font-family:'DM Mono',monospace; font-size:12px; outline:none; transition:border-color 0.2s; }
+  .ah-field input:focus { border-color:var(--blue); }
+
+  /* ══ PROMOCIONES ══ */
+  .promos-list { margin-bottom:32px; }
+  .promo-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:12px; display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:start; animation:fadeIn 0.3s ease both; transition:border-color 0.2s; }
+  .promo-card:hover { border-color:var(--yellow); }
+  .promo-emoji { font-size:28px; line-height:1; padding-top:2px; }
+  .promo-rest { font-size:13px; font-weight:500; color:var(--text); margin-bottom:4px; }
+  .promo-desc { font-size:11px; color:var(--muted); line-height:1.6; margin-bottom:8px; }
+  .promo-tags { display:flex; gap:8px; flex-wrap:wrap; }
+  .promo-tag      { font-size:10px; padding:2px 8px; border-radius:12px; background:rgba(251,191,36,0.12); color:var(--yellow); font-weight:500; }
+  .promo-tag.blue { background:rgba(96,165,250,0.1); color:var(--blue); }
+  .ap-grid  { display:grid; grid-template-columns:60px 1fr 1fr; gap:10px; margin-bottom:10px; }
+  .ap-grid2 { display:grid; grid-template-columns:1fr auto; gap:10px; }
+
+  /* ══ PUNTUACION ══ */
+  .puntos-list { margin-bottom:32px; }
+  .puntos-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:12px; animation:fadeIn 0.3s ease both; transition:border-color 0.2s; }
+  .puntos-card:hover { border-color:#f472b6; }
+  .puntos-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .puntos-name { font-size:14px; font-weight:500; }
+  .stars-row { display:flex; gap:4px; margin-bottom:10px; }
+  .star { font-size:20px; line-height:1; }
+  .puntos-meta { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .puntos-meta-item { font-size:11px; color:var(--muted); }
+  .puntos-meta-item span { color:var(--text); }
+  .puntos-comment { font-size:11px; color:var(--muted); font-style:italic; line-height:1.6; border-left:2px solid var(--border); padding-left:10px; margin-top:8px; }
+  .ranking-podium { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:32px; }
+  .podium-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; text-align:center; }
+  .podium-card.gold   { border-color:#fbbf24; }
+  .podium-card.silver { border-color:var(--muted); }
+  .podium-card.bronze { border-color:#b45309; }
+  .podium-pos   { font-size:22px; margin-bottom:6px; }
+  .podium-name  { font-size:11px; color:var(--text); font-weight:500; line-height:1.3; }
+  .podium-score { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; margin-top:4px; }
+  .podium-card.gold   .podium-score { color:#fbbf24; }
+  .podium-card.silver .podium-score { color:var(--muted); }
+  .podium-card.bronze .podium-score { color:#b45309; }
+  .star-picker { display:flex; gap:6px; }
+  .star-pick { font-size:24px; cursor:pointer; filter:grayscale(1) opacity(0.3); transition:transform 0.12s,filter 0.12s; line-height:1; }
+  .star-pick.lit { filter:none; }
+  .star-pick:hover { transform:scale(1.15); }
+  .ap2-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .ap2-field label { font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
+  .ap2-field input, .ap2-field textarea, .ap2-field select {
+    width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+    padding:9px 12px; color:var(--text); font-family:'DM Mono',monospace; font-size:12px; outline:none;
+    transition:border-color 0.2s; resize:none;
+  }
+  .ap2-field input:focus, .ap2-field textarea:focus { border-color:#f472b6; }
+  .ap2-field select option { background:var(--surface2); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align:center; padding:48px 20px; color:var(--muted); font-size:12px; line-height:2; }
+  .empty-state .big { font-size:36px; display:block; margin-bottom:8px; }
+
+  /* ── MOBILE TOGGLE ── */
+  .sidebar-toggle { display:none; position:fixed; top:16px; left:16px; z-index:20; background:var(--surface); border:1px solid var(--border); color:var(--text); font-size:18px; border-radius:8px; padding:6px 10px; cursor:pointer; }
+
+  /* ── MOBILE ── */
+  @media (max-width:700px) {
+    :root { --sidebar-l:0px; }
+    .sidebar-left { transform:translateX(-220px); width:220px; transition:transform 0.3s; }
+    .sidebar-left.open { transform:translateX(0); }
+    .main { margin-left:0; }
+    .sidebar-toggle { display:block; }
+    .screen { padding:56px 14px 60px; }
+    h1 { font-size:26px; }
+    .inputs { grid-template-columns:1fr; gap:10px; margin-bottom:24px; }
+    .input-block { padding:14px; }
+    .input-block input { font-size:20px; }
+    .summary-bar { gap:8px; margin-bottom:24px; }
+    .stat { padding:12px 14px; }
+    .stat-value { font-size:16px; }
+    .rest-row { padding:10px 12px; gap:8px; }
+    .rest-name { font-size:12px; }
+    .rest-price { display:none; }
+    .rest-badge { font-size:10px; padding:2px 7px; }
+    .add-section { padding:16px; }
+    .add-grid { grid-template-columns:1fr; }
+    .history-section { padding:16px; }
+    .history-grid { grid-template-columns:1fr; }
+    .horarios-grid { grid-template-columns:1fr; }
+    .ah-grid { grid-template-columns:1fr 1fr; }
+    .ranking-podium { grid-template-columns:1fr; }
+    .ap-grid { grid-template-columns:1fr; }
+    .ap-grid2 { grid-template-columns:1fr; }
+    .ap2-grid { grid-template-columns:1fr; }
+    .right-btn { font-size:7px; width:40px; padding:10px 3px; }
+    .right-btn .r-icon { font-size:15px; }
+  }
+  @media (max-width:420px) {
+    h1 { font-size:20px; }
+    .summary-bar { grid-template-columns:1fr; }
+  }
+
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<button class="sidebar-toggle" onclick="toggleSidebar()" title="Menú">☰</button>
+
+<!-- ══ LEFT SIDEBAR ══ -->
+<aside class="sidebar-left" id="sidebar-left">
+  <div class="sidebar-logo">
+    <div class="tag">Medellín · 2026</div>
+    <h2>Calculadora<br>de <span>Restaurantes</span></h2>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-group-label">Modos</span>
+    <button class="nav-btn nocturna active" onclick="showScreen('nocturna',this)"><span class="nav-dot"></span>🌙 Semanal Nocturna</button>
+    <button class="nav-btn finde"           onclick="showScreen('finde',this)"><span class="nav-dot"></span>☀️ Fin de Semana</button>
+    <button class="nav-btn fiesta"          onclick="showScreen('fiesta',this)"><span class="nav-dot"></span>🎉 Fiesta</button>
+    <span class="nav-group-label">Info</span>
+    <button class="nav-btn hnav" onclick="showScreen('horarios',this)"><span class="nav-dot" style="background:var(--blue)"></span>🕐 Horarios</button>
+    <button class="nav-btn pnav" onclick="showScreen('promos',this)"><span class="nav-dot" style="background:var(--yellow)"></span>🏷️ Promociones</button>
+    <button class="nav-btn qnav" onclick="showScreen('puntos',this)"><span class="nav-dot" style="background:#f472b6"></span>⭐ Puntuación</button>
+  </nav>
+  <div class="sidebar-footer">Precios en COP · base 2 personas</div>
+</aside>
+
+<!-- ══ RIGHT SIDEBAR ══ -->
+<aside class="sidebar-right">
+  <div class="right-label">info</div>
+  <button class="right-btn horarios" id="rbtn-horarios" onclick="showScreen('horarios', document.querySelector('.nav-btn.hnav'))" title="Horarios">
+    <span class="r-icon">🕐</span>Horarios
+  </button>
+  <div class="right-divider"></div>
+  <button class="right-btn promos" id="rbtn-promos" onclick="showScreen('promos', document.querySelector('.nav-btn.pnav'))" title="Promociones">
+    <span class="r-icon">🏷️</span>Promos
+  </button>
+  <div class="right-divider"></div>
+  <button class="right-btn puntos" id="rbtn-puntos" onclick="showScreen('puntos', document.querySelector('.nav-btn.qnav'))" title="Puntuación">
+    <span class="r-icon">⭐</span>Puntos
+  </button>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+
+  <!-- NOCTURNA -->
+  <section class="screen active" id="screen-nocturna">
+    <header><div class="tag-header">🌙 Semanal Nocturna</div><h1>Salir a <span class="nocturna">comer</span><br>esta semana</h1></header>
+    <div class="inputs">
+      <div class="input-block"><label>Presupuesto disponible</label><input type="number" id="budget-nocturna" placeholder="0" min="0" step="1000"><div class="hint">En pesos colombianos</div></div>
+      <div class="input-block"><label>Número de personas</label><input type="number" id="persons-nocturna" value="2" min="1" max="20"><div class="hint">El precio base es para 2</div></div>
+    </div>
+    <div class="summary-bar">
+      <div class="stat"><div class="stat-label">Puedes ir a</div><div class="stat-value green" id="count-ok-nocturna">—</div></div>
+      <div class="stat"><div class="stat-label">Más barato</div><div class="stat-value yellow" id="cheapest-nocturna">—</div></div>
+      <div class="stat"><div class="stat-label">Bloqueados</div><div class="stat-value muted" id="count-blocked-nocturna">—</div></div>
+    </div>
+    <div class="section-title">Restaurantes</div>
+    <div class="restaurant-list" id="list-nocturna"></div>
+    <div class="add-section"><h3>+ Agregar restaurante</h3><div class="add-grid">
+      <div class="add-field"><label>Nombre + emoji</label><input type="text" id="add-name-nocturna" placeholder="Ej: La Fonda 🍛"></div>
+      <div class="add-field"><label>Precio (2p)</label><input type="number" id="add-price-nocturna" placeholder="60000" step="1000"></div>
+      <div class="add-field"><label>Categoría</label><input type="text" id="add-cat-nocturna" placeholder="Ej: bandeja"></div>
+      <div class="add-field"><button class="add-btn" onclick="addRestaurant('nocturna')">Agregar</button></div>
+    </div></div>
+    <div class="section-title">Historial</div>
+    <div class="history-section">
+      <div class="history-header"><div><h2>¿Qué comiste estos días?</h2><p>Los de la misma categoría quedan tachados</p></div></div>
+      <div class="emoji-hint"><strong>Escribe el emoji del restaurante que comiste:</strong><div class="chips" id="chips-nocturna"></div></div>
+      <div class="history-grid" id="history-nocturna"></div>
+      <button class="clear-btn" onclick="clearHistory('nocturna')">Limpiar historial</button>
+    </div>
+    <div class="disclaimer"><span class="disclaimer-icon">⚠️</span><span>Los precios están sujetos a variaciones entre $5.000–$10.000 pesos sin servicios.</span></div>
+  </section>
+
+  <!-- FINDE -->
+  <section class="screen" id="screen-finde">
+    <header><div class="tag-header finde">☀️ Fin de Semana</div><h1>Salir a <span class="finde">comer</span><br>el finde</h1></header>
+    <div class="inputs">
+      <div class="input-block finde"><label>Presupuesto disponible</label><input type="number" id="budget-finde" placeholder="0" min="0" step="1000"><div class="hint">En pesos colombianos</div></div>
+      <div class="input-block finde"><label>Número de personas</label><input type="number" id="persons-finde" value="2" min="1" max="20"><div class="hint">El precio base es para 2</div></div>
+    </div>
+    <div class="summary-bar">
+      <div class="stat"><div class="stat-label">Puedes ir a</div><div class="stat-value finde-c" id="count-ok-finde">—</div></div>
+      <div class="stat"><div class="stat-label">Más barato</div><div class="stat-value yellow" id="cheapest-finde">—</div></div>
+      <div class="stat"><div class="stat-label">Bloqueados</div><div class="stat-value muted" id="count-blocked-finde">—</div></div>
+    </div>
+    <div class="section-title">Restaurantes · Fin de Semana</div>
+    <div class="restaurant-list" id="list-finde"></div>
+    <div class="add-section"><h3>+ Agregar restaurante</h3><div class="add-grid">
+      <div class="add-field"><label>Nombre + emoji</label><input type="text" id="add-name-finde" placeholder="Ej: La Fonda 🍛"></div>
+      <div class="add-field"><label>Precio (2p)</label><input type="number" id="add-price-finde" placeholder="60000" step="1000"></div>
+      <div class="add-field"><label>Categoría</label><input type="text" id="add-cat-finde" placeholder="Ej: bandeja"></div>
+      <div class="add-field"><button class="add-btn finde" onclick="addRestaurant('finde')">Agregar</button></div>
+    </div></div>
+    <div class="section-title">Historial</div>
+    <div class="history-section">
+      <div class="history-header"><div><h2>¿Qué comiste este finde?</h2><p>Los de la misma categoría quedan tachados</p></div></div>
+      <div class="emoji-hint"><strong>Escribe el emoji del restaurante que comiste:</strong><div class="chips" id="chips-finde"></div></div>
+      <div class="history-grid" id="history-finde"></div>
+      <button class="clear-btn" onclick="clearHistory('finde')">Limpiar historial</button>
+    </div>
+    <div class="disclaimer"><span class="disclaimer-icon">⚠️</span><span>Los precios están sujetos a variaciones entre $5.000–$10.000 pesos sin servicios.</span></div>
+  </section>
+
+  <!-- FIESTA -->
+  <section class="screen" id="screen-fiesta">
+    <header><div class="tag-header fiesta">🎉 Fiesta</div><h1>Comer antes<br>de la <span class="fiesta">rumba</span></h1></header>
+    <div class="inputs">
+      <div class="input-block fiesta"><label>Presupuesto disponible</label><input type="number" id="budget-fiesta" placeholder="0" min="0" step="1000"><div class="hint">En pesos colombianos</div></div>
+      <div class="input-block fiesta"><label>Número de personas</label><input type="number" id="persons-fiesta" value="2" min="1" max="20"><div class="hint">El precio base es para 2</div></div>
+    </div>
+    <div class="summary-bar">
+      <div class="stat"><div class="stat-label">Puedes ir a</div><div class="stat-value fiesta-c" id="count-ok-fiesta">—</div></div>
+      <div class="stat"><div class="stat-label">Más barato</div><div class="stat-value yellow" id="cheapest-fiesta">—</div></div>
+      <div class="stat"><div class="stat-label">Bloqueados</div><div class="stat-value muted" id="count-blocked-fiesta">—</div></div>
+    </div>
+    <div class="section-title">Restaurantes · Fiesta</div>
+    <div class="restaurant-list" id="list-fiesta"></div>
+    <div class="add-section"><h3>+ Agregar restaurante</h3><div class="add-grid">
+      <div class="add-field"><label>Nombre + emoji</label><input type="text" id="add-name-fiesta" placeholder="Ej: Cazuela 🍲"></div>
+      <div class="add-field"><label>Precio (2p)</label><input type="number" id="add-price-fiesta" placeholder="60000" step="1000"></div>
+      <div class="add-field"><label>Categoría</label><input type="text" id="add-cat-fiesta" placeholder="Ej: cazuela"></div>
+      <div class="add-field"><button class="add-btn fiesta" onclick="addRestaurant('fiesta')">Agregar</button></div>
+    </div></div>
+    <div class="section-title">Historial</div>
+    <div class="history-section">
+      <div class="history-header"><div><h2>¿Qué comiste antes?</h2><p>Los de la misma categoría quedan tachados</p></div></div>
+      <div class="emoji-hint"><strong>Escribe el emoji del restaurante que comiste:</strong><div class="chips" id="chips-fiesta"></div></div>
+      <div class="history-grid" id="history-fiesta"></div>
+      <button class="clear-btn" onclick="clearHistory('fiesta')">Limpiar historial</button>
+    </div>
+    <div class="disclaimer"><span class="disclaimer-icon">⚠️</span><span>Los precios están sujetos a variaciones entre $5.000–$10.000 pesos sin servicios.</span></div>
+  </section>
+
+  <!-- HORARIOS -->
+  <section class="screen" id="screen-horarios">
+    <header><div class="tag-header horarios">🕐 Horarios</div><h1>¿Cuándo <span class="horarios">abren</span>?</h1></header>
+    <div class="section-title">Horarios guardados</div>
+    <div class="horarios-grid" id="horarios-grid"></div>
+    <div class="add-section">
+      <h3>+ Agregar horario</h3>
+      <div class="ah-grid">
+        <div class="ah-field"><label>Restaurante</label><input type="text" id="ah-name" placeholder="Ej: Mao 🥐🍟"></div>
+        <div class="ah-field"><label>Abre L–V</label><input type="time" id="ah-open-lv" value="12:00"></div>
+        <div class="ah-field"><label>Cierra L–V</label><input type="time" id="ah-close-lv" value="22:00"></div>
+        <div class="ah-field"><label>Abre S–D</label><input type="time" id="ah-open-sd" value="12:00"></div>
+        <div class="ah-field"><label>Cierra S–D</label><input type="time" id="ah-close-sd" value="23:00"></div>
+      </div>
+      <button class="add-btn blue" onclick="addHorario()" style="width:auto;padding:10px 24px">Guardar horario</button>
+    </div>
+  </section>
+
+  <!-- PROMOCIONES -->
+  <section class="screen" id="screen-promos">
+    <header><div class="tag-header promos">🏷️ Promociones</div><h1>Ofertas y <span class="promos">descuentos</span></h1></header>
+    <div class="section-title">Promociones activas</div>
+    <div class="promos-list" id="promos-list"></div>
+    <div class="add-section">
+      <h3>+ Agregar promoción</h3>
+      <div class="ap-grid">
+        <div class="add-field"><label>Emoji</label><input type="text" id="ap-emoji" placeholder="🏷️" maxlength="2"></div>
+        <div class="add-field"><label>Restaurante</label><input type="text" id="ap-rest" placeholder="Ej: Hot Cheese 🍔"></div>
+        <div class="add-field"><label>Etiqueta</label><input type="text" id="ap-tag" placeholder="Ej: 2x1 · Domingos"></div>
+      </div>
+      <div class="ap-grid2">
+        <div class="add-field"><label>Descripción</label><textarea id="ap-desc" rows="2" placeholder="Ej: Compra una hamburguesa y la segunda va a mitad de precio los domingos después de las 6pm."></textarea></div>
+        <div class="add-field" style="display:flex;align-items:flex-end"><button class="add-btn yellow" onclick="addPromo()">Agregar</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PUNTUACION -->
+  <section class="screen" id="screen-puntos">
+    <header><div class="tag-header puntos">⭐ Puntuación</div><h1>Tus <span class="puntos">calificaciones</span></h1></header>
+    <div class="section-title">Podio</div>
+    <div class="ranking-podium" id="puntos-podium"></div>
+    <div class="section-title">Todas las reseñas</div>
+    <div class="puntos-list" id="puntos-list"></div>
+    <div class="add-section">
+      <h3>+ Calificar restaurante</h3>
+      <div class="ap2-grid">
+        <div class="ap2-field"><label>Restaurante</label><input type="text" id="ap2-name" placeholder="Ej: Animal 🍔"></div>
+        <div class="ap2-field"><label>Estrellas</label><div class="star-picker" id="star-picker">
+          <span class="star-pick" data-v="1">⭐</span><span class="star-pick" data-v="2">⭐</span>
+          <span class="star-pick" data-v="3">⭐</span><span class="star-pick" data-v="4">⭐</span>
+          <span class="star-pick" data-v="5">⭐</span>
+        </div></div>
+      </div>
+      <div class="ap2-grid">
+        <div class="ap2-field"><label>Precio pagado (2 personas)</label><input type="number" id="ap2-price" placeholder="60000" step="1000"></div>
+        <div class="ap2-field"><label>Fecha</label><input type="date" id="ap2-date"></div>
+      </div>
+      <div class="ap2-field" style="margin-top:10px"><label>Comentario</label><textarea id="ap2-comment" rows="2" placeholder="Ej: Muy buena carne, el servicio un poco lento pero vale la pena..."></textarea></div>
+      <button class="add-btn pink" onclick="addPunto()" style="margin-top:12px;width:auto;padding:10px 24px">Guardar calificación</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ══ DATA ══
+const DEFAULT_RESTAURANTS = {
+  nocturna:[
+    {name:"Mao 🥐🍟",price:70000,cat:"sandwich"},
+    {name:"Alexander 🥩",price:60000,cat:"parrilla"},
+    {name:"Autentico 🥩",price:55000,cat:"parrilla"},
+    {name:"Hot cheese 🍔",price:50000,cat:"hamburguesa"},
+    {name:"Tomahawk 🍗",price:90000,cat:"pollo"},
+    {name:"Barrio 🍔",price:55000,cat:"hamburguesa"},
+    {name:"Stella 🐐",price:140000,cat:"especial"},
+    {name:"Mr alitas 🍗",price:60000,cat:"pollo"},
+    {name:"Mandingas 🍟",price:30000,cat:"papas"},
+    {name:"Perros de Diego 🌭",price:75000,cat:"perro"},
+    {name:"Pollo Rappy 🍗",price:50000,cat:"pollo"},
+    {name:"Pollo Santa Gema 🍗",price:55000,cat:"pollo"},
+    {name:"Animal 🍔",price:60000,cat:"hamburguesa"},
+    {name:"Piloncito 🍔",price:60000,cat:"hamburguesa"},
+    {name:"Natipapas 🍟",price:70000,cat:"papas"},
+    {name:"Burrazo 🌯",price:50000,cat:"burrito"},
+    {name:"Mexicano la 70 🌯",price:70000,cat:"burrito"},
+    {name:"Tachingon 🌯",price:100000,cat:"burrito"},
+    {name:"Harry's 🍕",price:50000,cat:"pizza"},
+  ],
+  finde:[], fiesta:[]
+};
+const EMOJI_MAP = {
+  "🥐":"sandwich","🍟":"papas","🥩":"parrilla","🍔":"hamburguesa","🍗":"pollo",
+  "🐐":"especial","🌭":"perro","🌯":"burrito","🍕":"pizza",
+  "🍛":"curry","🍲":"cazuela","🥗":"ensalada","🌮":"tacos","🍣":"sushi","🍜":"sopa"
+};
+const DAYS = ["Ayer · Almuerzo","Ayer · Cena","Hoy · Almuerzo","Hoy · Cena"];
+
+// ══ STATE ══
+function loadState() {
+  return {
+    restaurants: JSON.parse(localStorage.getItem('rest-data')||'null') || DEFAULT_RESTAURANTS,
+    history:     JSON.parse(localStorage.getItem('rest-history-v2')||'{"nocturna":["","","",""],"finde":["","","",""],"fiesta":["","","",""]}'),
+    horarios:    JSON.parse(localStorage.getItem('rest-horarios')||'[]'),
+    promos:      JSON.parse(localStorage.getItem('rest-promos')||'[]'),
+    puntos:      JSON.parse(localStorage.getItem('rest-puntos')||'[]'),
+  };
+}
+let state = loadState();
+function saveState() {
+  localStorage.setItem('rest-data',JSON.stringify(state.restaurants));
+  localStorage.setItem('rest-history-v2',JSON.stringify(state.history));
+  localStorage.setItem('rest-horarios',JSON.stringify(state.horarios));
+  localStorage.setItem('rest-promos',JSON.stringify(state.promos));
+  localStorage.setItem('rest-puntos',JSON.stringify(state.puntos));
+}
+
+// ══ NAVIGATION ══
+function showScreen(id, btn) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn,.right-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  ['horarios','promos','puntos'].forEach(k=>{
+    const rb=document.getElementById('rbtn-'+k);
+    if(rb) rb.classList.toggle('active',id===k);
+  });
+  closeSidebar();
+  if (['nocturna','finde','fiesta'].includes(id)) renderAll(id);
+  else if (id==='horarios') renderHorarios();
+  else if (id==='promos')   renderPromos();
+  else if (id==='puntos')   renderPuntos();
+}
+function toggleSidebar() { document.getElementById('sidebar-left').classList.toggle('open'); }
+function closeSidebar()  { document.getElementById('sidebar-left').classList.remove('open'); }
+
+// ══ UTILS ══
+function fmt(n) { return '$'+Number(n).toLocaleString('es-CO'); }
+function calcPrice(base,p) { return Math.round(base/2*p); }
+function getBlockedCats(mode) {
+  const s=new Set();
+  (state.history[mode]||[]).forEach(e=>{ const c=EMOJI_MAP[e.trim()]; if(c) s.add(c); });
+  return s;
+}
+function fmtTime(t) {
+  if(!t) return '—';
+  const [h,m]=t.split(':'); const hr=parseInt(h);
+  return `${hr%12||12}:${m}${hr>=12?'pm':'am'}`;
+}
+function isOpenNow(o,c) {
+  if(!o||!c) return null;
+  const now=new Date(); const cur=now.getHours()*60+now.getMinutes();
+  const [oh,om]=o.split(':').map(Number); const [ch,cm]=c.split(':').map(Number);
+  return cur>=oh*60+om && cur<=ch*60+cm;
+}
+function isWeekend() { const d=new Date().getDay(); return d===0||d===6; }
+
+// ══ RESTAURANTS ══
+function renderAll(mode) { renderList(mode); renderHistory(mode); renderChips(mode); }
+
+function renderList(mode) {
+  const budget=parseFloat(document.getElementById('budget-'+mode).value)||0;
+  const persons=parseInt(document.getElementById('persons-'+mode).value)||2;
+  const blocked=getBlockedCats(mode);
+  const el=document.getElementById('list-'+mode); el.innerHTML='';
+  let ok=0,cheap=Infinity;
+  const rests=state.restaurants[mode]||[];
+  rests.forEach((r,i)=>{
+    const price=calcPrice(r.price,persons);
+    const isB=blocked.has(r.cat), canGo=!isB&&budget>0&&budget>=price;
+    if(canGo){ok++;if(price<cheap)cheap=price;}
+    const row=document.createElement('div');
+    row.className='rest-row'+(isB?' blocked':canGo?` can-go ${mode}`:' cant-go');
+    row.style.setProperty('--i',i);
+    const badge=isB
+      ? `<span class="rest-badge blocked-badge">⛔ ya comiste</span>`
+      : budget===0
+        ? `<span class="rest-badge empty">— ingresa presupuesto</span>`
+        : canGo
+          ? `<span class="rest-badge ok ${mode}">✓ puedes ir</span>`
+          : `<span class="rest-badge no">faltan ${fmt(price-budget)}</span>`;
+    const showDel=mode!=='nocturna'||i>=DEFAULT_RESTAURANTS.nocturna.length;
+    const del=showDel?`<button class="rest-del" onclick="deleteRestaurant('${mode}',${i})">✕</button>`:'';
+    row.innerHTML=`<span class="rest-name">${r.name}</span><span class="rest-price">${fmt(price)}</span><div style="display:flex;align-items:center;gap:8px">${badge}${del}</div>`;
+    el.appendChild(row);
+  });
+  if(!rests.length) el.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">Aún no hay restaurantes · agrégalos abajo ↓</div>`;
+  document.getElementById('count-ok-'+mode).textContent=budget>0?`${ok} lugares`:'—';
+  document.getElementById('cheapest-'+mode).textContent=budget>0&&ok>0?fmt(cheap):'—';
+  document.getElementById('count-blocked-'+mode).textContent=blocked.size>0?`${rests.filter(r=>blocked.has(r.cat)).length} lugares`:'—';
+}
+
+function renderHistory(mode) {
+  const grid=document.getElementById('history-'+mode); grid.innerHTML='';
+  DAYS.forEach((day,i)=>{
+    const emoji=(state.history[mode]||[])[i]||'', cat=EMOJI_MAP[emoji.trim()]||'';
+    const card=document.createElement('div'); card.className='history-card';
+    card.innerHTML=`<label>${day}</label><div class="emoji-input-wrap">
+      <input class="emoji-input" maxlength="2" placeholder="—" value="${emoji}" data-idx="${i}" data-mode="${mode}"/>
+      <span class="cat-display ${cat?'':'none'}">${cat||'sin categoría'}</span></div>`;
+    grid.appendChild(card);
+  });
+  grid.querySelectorAll('.emoji-input').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const idx=parseInt(e.target.dataset.idx),m=e.target.dataset.mode;
+      state.history[m][idx]=e.target.value.trim(); saveState(); renderAll(m);
+    });
+  });
+}
+
+function renderChips(mode) {
+  const c=document.getElementById('chips-'+mode); c.innerHTML='';
+  Object.entries(EMOJI_MAP).forEach(([emoji,cat])=>{
+    const chip=document.createElement('span'); chip.className='chip';
+    chip.textContent=`${emoji} ${cat}`;
+    chip.addEventListener('click',()=>{ navigator.clipboard.writeText(emoji).catch(()=>{}); chip.textContent='✓ copiado'; setTimeout(()=>{chip.textContent=`${emoji} ${cat}`;},1000); });
+    c.appendChild(chip);
+  });
+}
+
+function addRestaurant(mode) {
+  const name=document.getElementById('add-name-'+mode).value.trim();
+  const price=parseInt(document.getElementById('add-price-'+mode).value)||0;
+  const cat=document.getElementById('add-cat-'+mode).value.trim().toLowerCase();
+  if(!name||!price||!cat){alert('Completa todos los campos');return;}
+  state.restaurants[mode].push({name,price,cat}); saveState();
+  document.getElementById('add-name-'+mode).value='';
+  document.getElementById('add-price-'+mode).value='';
+  document.getElementById('add-cat-'+mode).value='';
+  renderAll(mode);
+}
+function deleteRestaurant(mode,i){state.restaurants[mode].splice(i,1);saveState();renderAll(mode);}
+function clearHistory(mode){state.history[mode]=['','','',''];saveState();renderAll(mode);}
+
+// ══ HORARIOS ══
+function addHorario() {
+  const name=document.getElementById('ah-name').value.trim();
+  if(!name){alert('Escribe el nombre del restaurante');return;}
+  state.horarios.push({
+    name, openLv:document.getElementById('ah-open-lv').value,
+    closeLv:document.getElementById('ah-close-lv').value,
+    openSd:document.getElementById('ah-open-sd').value,
+    closeSd:document.getElementById('ah-close-sd').value,
+  });
+  saveState(); document.getElementById('ah-name').value=''; renderHorarios();
+}
+function deleteHorario(i){state.horarios.splice(i,1);saveState();renderHorarios();}
+
+function renderHorarios() {
+  const grid=document.getElementById('horarios-grid');
+  if(!state.horarios.length){
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><span class="big">🕐</span>Aún no has guardado horarios<br>Agrega los horarios para saber si están abiertos ahora</div>`;
+    return;
+  }
+  grid.innerHTML='';
+  const wknd=isWeekend();
+  state.horarios.forEach((h,i)=>{
+    const open=wknd?isOpenNow(h.openSd,h.closeSd):isOpenNow(h.openLv,h.closeLv);
+    const badge=open===null?`<span class="open-badge unknown">⚪ sin datos</span>`
+      :open?`<span class="open-badge open">🟢 Abierto ahora</span>`
+           :`<span class="open-badge closed">🔴 Cerrado</span>`;
+    const card=document.createElement('div');
+    card.className='horario-card'; card.style.setProperty('--i',i);
+    card.innerHTML=`
+      <div class="horario-top"><span class="horario-name">${h.name}</span><button class="del-small" onclick="deleteHorario(${i})">✕</button></div>
+      <div class="time-row">
+        <div class="time-item"><label>Lunes–Viernes</label><span>${fmtTime(h.openLv)} – ${fmtTime(h.closeLv)}</span></div>
+        <div class="time-item"><label>Sábado–Domingo</label><span>${fmtTime(h.openSd)} – ${fmtTime(h.closeSd)}</span></div>
+      </div>${badge}`;
+    grid.appendChild(card);
+  });
+}
+
+// ══ PROMOCIONES ══
+function addPromo() {
+  const emoji=document.getElementById('ap-emoji').value.trim()||'🏷️';
+  const rest=document.getElementById('ap-rest').value.trim();
+  const desc=document.getElementById('ap-desc').value.trim();
+  const tag=document.getElementById('ap-tag').value.trim();
+  if(!rest||!desc){alert('Completa restaurante y descripción');return;}
+  state.promos.push({emoji,rest,desc,tag,date:new Date().toLocaleDateString('es-CO')});
+  saveState();
+  ['ap-emoji','ap-rest','ap-desc','ap-tag'].forEach(id=>document.getElementById(id).value='');
+  renderPromos();
+}
+function deletePromo(i){state.promos.splice(i,1);saveState();renderPromos();}
+
+function renderPromos() {
+  const list=document.getElementById('promos-list');
+  if(!state.promos.length){
+    list.innerHTML=`<div class="empty-state"><span class="big">🏷️</span>Sin promociones guardadas<br>Agrega las ofertas que encuentres</div>`;
+    return;
+  }
+  list.innerHTML='';
+  state.promos.forEach((p,i)=>{
+    const card=document.createElement('div'); card.className='promo-card'; card.style.setProperty('--i',i);
+    card.innerHTML=`
+      <div class="promo-emoji">${p.emoji}</div>
+      <div>
+        <div class="promo-rest">${p.rest}</div>
+        <div class="promo-desc">${p.desc}</div>
+        <div class="promo-tags">
+          ${p.tag?`<span class="promo-tag">${p.tag}</span>`:''}
+          <span class="promo-tag blue">📅 ${p.date}</span>
+        </div>
+      </div>
+      <button class="del-small" onclick="deletePromo(${i})">✕</button>`;
+    list.appendChild(card);
+  });
+}
+
+// ══ PUNTUACION ══
+let selectedStars=0;
+function initStars() {
+  document.querySelectorAll('.star-pick').forEach(s=>{
+    s.addEventListener('click',()=>{
+      selectedStars=parseInt(s.dataset.v);
+      document.querySelectorAll('.star-pick').forEach((st,idx)=>st.classList.toggle('lit',idx<selectedStars));
+    });
+    s.addEventListener('mouseenter',()=>{
+      const v=parseInt(s.dataset.v);
+      document.querySelectorAll('.star-pick').forEach((st,idx)=>st.classList.toggle('lit',idx<v));
+    });
+    s.addEventListener('mouseleave',()=>{
+      document.querySelectorAll('.star-pick').forEach((st,idx)=>st.classList.toggle('lit',idx<selectedStars));
+    });
+  });
+}
+
+function addPunto() {
+  const name=document.getElementById('ap2-name').value.trim();
+  if(!name||!selectedStars){alert('Escribe el nombre y selecciona estrellas');return;}
+  state.puntos.push({
+    name, stars:selectedStars,
+    price:parseInt(document.getElementById('ap2-price').value)||0,
+    date:document.getElementById('ap2-date').value,
+    comment:document.getElementById('ap2-comment').value.trim()
+  });
+  saveState();
+  document.getElementById('ap2-name').value=''; document.getElementById('ap2-price').value='';
+  document.getElementById('ap2-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('ap2-comment').value='';
+  selectedStars=0; document.querySelectorAll('.star-pick').forEach(s=>s.classList.remove('lit'));
+  renderPuntos();
+}
+function deletePunto(i){state.puntos.splice(i,1);saveState();renderPuntos();}
+
+function renderPuntos() {
+  const list=document.getElementById('puntos-list'), podium=document.getElementById('puntos-podium');
+  if(!state.puntos.length){
+    podium.innerHTML='';
+    list.innerHTML=`<div class="empty-state"><span class="big">⭐</span>Sin calificaciones aún<br>Puntúa los restaurantes que visites</div>`;
+    return;
+  }
+  const sorted=[...state.puntos].sort((a,b)=>b.stars-a.stars);
+  const medals=['🥇','🥈','🥉'], cls=['gold','silver','bronze'];
+  podium.innerHTML='';
+  sorted.slice(0,3).forEach((p,i)=>{
+    const c=document.createElement('div'); c.className=`podium-card ${cls[i]}`;
+    c.innerHTML=`<div class="podium-pos">${medals[i]}</div><div class="podium-name">${p.name}</div><div class="podium-score">${'⭐'.repeat(p.stars)}</div>`;
+    podium.appendChild(c);
+  });
+  list.innerHTML='';
+  state.puntos.forEach((p,i)=>{
+    const card=document.createElement('div'); card.className='puntos-card'; card.style.setProperty('--i',i);
+    const starsHtml=[1,2,3,4,5].map(n=>`<span class="star">${p.stars>=n?'⭐':'☆'}</span>`).join('');
+    card.innerHTML=`
+      <div class="puntos-header"><span class="puntos-name">${p.name}</span><button class="del-small" onclick="deletePunto(${i})">✕</button></div>
+      <div class="stars-row">${starsHtml}</div>
+      <div class="puntos-meta">
+        ${p.price?`<span class="puntos-meta-item">💰 <span>${fmt(p.price)}</span></span>`:''}
+        ${p.date?`<span class="puntos-meta-item">📅 <span>${p.date}</span></span>`:''}
+      </div>
+      ${p.comment?`<div class="puntos-comment">${p.comment}</div>`:''}`;
+    list.appendChild(card);
+  });
+}
+
+// ══ LISTENERS ══
+['nocturna','finde','fiesta'].forEach(mode=>{
+  ['budget','persons'].forEach(f=>{
+    document.getElementById(`${f}-${mode}`).addEventListener('input',()=>renderList(mode));
+  });
+});
+
+// ══ INIT ══
+initStars();
+document.getElementById('ap2-date').value=new Date().toISOString().split('T')[0];
+renderAll('nocturna');
+</script>
+</body>
+</html>
